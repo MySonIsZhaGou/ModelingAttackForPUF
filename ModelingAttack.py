@@ -23,7 +23,7 @@ class ArbiterPUF(object):
         self.response = 0.5 *self.sig + 0.5
         return self.response
 
-class AttackMethod0(object):
+class AttackForAPUF(object):
 
     def __init__(self,DataSet,label,numbits,numsample,numIt):
         self.DataSet = DataSet
@@ -70,6 +70,8 @@ class ProStroPUF(object):
         challenges = random.randint(0, 2, [2 * self.numbits, self.numsample])
         self.features = 1 - 2 * challenges
         return challenges
+        #the challenge should be self.challenge ,it's better
+        #the return value is not always a good choice, and it's better to invoke property
 
     def Feature(self):
         self.feature = []
@@ -100,7 +102,7 @@ class ProStroPUF(object):
         response = 0.5 * (1 - SigOutput)
         return response
 
-class AttackMethod1(object):
+class AttackForPPUF(object):
 
     def __init__(self,DataSet,label,numbits,numsample,numIt):
         self.DataSet = DataSet
@@ -133,7 +135,6 @@ class AttackMethod1(object):
             for n in range(8):
                 for i in range(self.numbits):
                     self.dataset[j][self.numbits * n + i] = self.DataFeature[n][i][j]
-        # return self.dataset,self.DataFeature,self.dataset[0][0],self.dataset[0][1],self.dataset[0][2],self.dataset[0][3],self.DataFeature[0][0][0],self.DataFeature[0][1][0],self.DataFeature[0][2][0],self.DataFeature[0][3][0]
 
     def TrainData(self):
         self.LRClassifier = logisticRegres()
@@ -185,7 +186,7 @@ class TriInvPUF(object):
                 self.response.append(0)
          return self.response
 
-class AttackMethod2(object):
+class AttackForTPUF(object):
 
     def __init__(self,DataSet,label,numbits,numsample,numIt):
         self.DataSet = DataSet
@@ -216,27 +217,28 @@ if __name__ == '__main__':
 
     NumBits = input("Please enter the numberbits:")
     NumSamples = input("Please enter the number of the samples:")
-    NumIter = input("Please enter the number of the interation you prefer:")
+    print "(",NumSamples/2,"samples for train data and",NumSamples/2,"samples for test data )",'\n',
+    NumIter = input("Please enter the number of the interation you prefer(500 is recommended):")
     choose = input("Please enter the number of the PUF you want to test:"
                    "\n1:FPGA-based Strong PUF, 2:Tristate inverter array PUF, 3:Arbiter PUF\n")
-    print "Please waiting"
+    print "Please waiting......"
 
     def execution(choose,NumBits,NumSamples,NumIter):
         if choose == 1:
             PPUFStart = time.time()
             PPUF = ProStroPUF(NumBits,NumSamples)
             PPUF.SegmentParameters()
-            PPUF.Challenge()
+            challengesSet = PPUF.Challenge()
             PPUF.Feature()
-            PPUF.Response()
+            ResponseSet = PPUF.Response()
 
-            PPUFAttack = AttackMethod1(PPUF.Challenge(),list(PPUF.Response()),NumBits,NumSamples,NumIter)
+            PPUFAttack = AttackForPPUF(challengesSet,list(ResponseSet),NumBits,NumSamples,NumIter)
             PPUFAttack.EncChallenge()
             PPUFAttack.Feature_FOR_struct1()
-            PPUFAttack.TrainData()
-            PPUFAttack.TestData()
+            TrainResult = PPUFAttack.TrainData()
+            TestResult = PPUFAttack.TestData()
             PPUFEnd = time.time()
-            return PPUFAttack.TrainData(),PPUFAttack.TestData(),str(PPUFEnd - PPUFStart)
+            return TrainResult,TestResult,str(PPUFEnd - PPUFStart)
 
         elif choose == 2:
             TPUFStart = time.time()
@@ -245,11 +247,11 @@ if __name__ == '__main__':
             TPUF.Challenge()
             TPUF.Response()
 
-            TPUFAttack = AttackMethod2(TPUF.Challenge(),TPUF.Response(),NumBits,NumSamples,NumIter)
-            TPUFAttack.TrainData()
-            TPUFAttack.TestData()
+            TPUFAttack = AttackForTPUF(TPUF.Challenge(),TPUF.Response(),NumBits,NumSamples,NumIter)
+            TrainResult = TPUFAttack.TrainData()
+            TestResult = TPUFAttack.TestData()
             TPUFEnd = time.time()
-            return TPUFAttack.TrainData(), TPUFAttack.TestData(), str(TPUFEnd - TPUFStart)
+            return TrainResult, TestResult, str(TPUFEnd - TPUFStart)
 
         elif choose == 3:
             APUFStart = time.time()
@@ -258,17 +260,17 @@ if __name__ == '__main__':
             APUF.Challenge()
             APUF.Response()
 
-            APUFAttack = AttackMethod0(APUF.Challenge(),list(APUF.Response()),NumBits,NumSamples,NumIter)
+            APUFAttack = AttackForAPUF(APUF.Challenge(),list(APUF.Response()),NumBits,NumSamples,NumIter)
             APUFAttack.EncChallenges()
-            APUFAttack.TrainData()
-            APUFAttack.TestData()
+            TrainResult = APUFAttack.TrainData()
+            TestResult = APUFAttack.TestData()
             APUFEnd = time.time()
-            return APUFAttack.TrainData(), APUFAttack.TestData(), str(APUFEnd - APUFStart)
+            return TrainResult, TestResult, str(APUFEnd - APUFStart)
 
     executionResult = execution(choose,NumBits,NumSamples,NumIter)
     print "The count of train pridict error are:",int(executionResult[0][0]),'\n',\
           "The rate of train pridict error is:",str(executionResult[0][1] * 100 )+'%','\n',\
           "The count of test pridict error are:",int(executionResult[1][0]),'\n',\
-          "The rate of train pridict error is:",str(executionResult[1][1] * 100 )+'%','\n', \
-          "The execution time is:", executionResult[2]
+          "The rate of test pridict error is:",str(executionResult[1][1] * 100 )+'%','\n', \
+          "The execution time is", str(executionResult[2])+"s"
 
